@@ -6,47 +6,56 @@ from pathlib import Path
 
 def handle_connection(connection, directory):
     request = connection.recv(1024)
-    lines = request.split(b"\r\n")
+    while b"\r\n\r\n" not in request:
+        request += connection.recv(1024)
+
+    header_data, _, body = request.partition(b"\r\n\r\n")
+    lines = header_data.split(b"\r\n")
     request_line = lines[0]
-    _, path, _ = request_line.split(b" ")
+    method, path, _ = request_line.split(b" ")
 
     headers = {}
     for line in lines[1:]:
-        if not line:
-            break
         name, _, value = line.partition(b": ")
         headers[name.lower()] = value
+
+    content_length = int(headers.get(b"content-length", b"0"))
+    while len(body) < content_length:
+        body += connection.recv(1024)
 
     if path == b"/":
         connection.sendall(b"HTTP/1.1 200 OK\r\n\r\n")
     elif path.startswith(b"/echo/"):
-        body = path[len(b"/echo/"):]
+        echo_body = path[len(b"/echo/"):]
         response = (
             b"HTTP/1.1 200 OK\r\n"
             b"Content-Type: text/plain\r\n"
-            b"Content-Length: " + str(len(body)).encode() + b"\r\n"
-            b"\r\n" + body
+            b"Content-Length: " + str(len(echo_body)).encode() + b"\r\n"
+            b"\r\n" + echo_body
         )
         connection.sendall(response)
     elif path == b"/user-agent":
-        body = headers.get(b"user-agent", b"")
+        user_agent = headers.get(b"user-agent", b"")
         response = (
             b"HTTP/1.1 200 OK\r\n"
             b"Content-Type: text/plain\r\n"
-            b"Content-Length: " + str(len(body)).encode() + b"\r\n"
-            b"\r\n" + body
+            b"Content-Length: " + str(len(user_agent)).encode() + b"\r\n"
+            b"\r\n" + user_agent
         )
         connection.sendall(response)
     elif path.startswith(b"/files/"):
         filename = path[len(b"/files/"):].decode()
         file_path = Path(directory) / filename
-        if file_path.is_file():
-            body = file_path.read_bytes()
+        if method == b"POST":
+            file_path.write_bytes(body[:content_length])
+            connection.sendall(b"HTTP/1.1 201 Created\r\n\r\n")
+        elif file_path.is_file():
+            file_body = file_path.read_bytes()
             response = (
                 b"HTTP/1.1 200 OK\r\n"
                 b"Content-Type: application/octet-stream\r\n"
-                b"Content-Length: " + str(len(body)).encode() + b"\r\n"
-                b"\r\n" + body
+                b"Content-Length: " + str(len(file_body)).encode() + b"\r\n"
+                b"\r\n" + file_body
             )
             connection.sendall(response)
         else:
