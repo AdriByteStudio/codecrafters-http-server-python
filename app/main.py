@@ -27,10 +27,15 @@ def handle_connection(connection, directory):
         connection.sendall(b"HTTP/1.1 200 OK\r\n\r\n")
     elif path.startswith(b"/echo/"):
         echo_body = path[len(b"/echo/"):]
+        encodings = [e.strip() for e in headers.get(b"accept-encoding", b"").split(b",")]
+        content_encoding_header = b""
+        if b"gzip" in encodings:
+            content_encoding_header = b"Content-Encoding: gzip\r\n"
         response = (
             b"HTTP/1.1 200 OK\r\n"
             b"Content-Type: text/plain\r\n"
-            b"Content-Length: " + str(len(echo_body)).encode() + b"\r\n"
+            + content_encoding_header
+            + b"Content-Length: " + str(len(echo_body)).encode() + b"\r\n"
             b"\r\n" + echo_body
         )
         connection.sendall(response)
