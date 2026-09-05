@@ -1,6 +1,7 @@
 import socket  # noqa: F401
 import sys
 import threading
+import gzip
 from pathlib import Path
 
 
@@ -31,6 +32,7 @@ def handle_connection(connection, directory):
         content_encoding_header = b""
         if b"gzip" in encodings:
             content_encoding_header = b"Content-Encoding: gzip\r\n"
+            echo_body = gzip.compress(echo_body)
         response = (
             b"HTTP/1.1 200 OK\r\n"
             b"Content-Type: text/plain\r\n"
