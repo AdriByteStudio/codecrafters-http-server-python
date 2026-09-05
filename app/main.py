@@ -8,13 +8,30 @@ def main():
     server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
     connection, _ = server_socket.accept() # wait for client
     request = connection.recv(1024)
-    request_line = request.split(b"\r\n")[0]
+    lines = request.split(b"\r\n")
+    request_line = lines[0]
     _, path, _ = request_line.split(b" ")
+
+    headers = {}
+    for line in lines[1:]:
+        if not line:
+            break
+        name, _, value = line.partition(b": ")
+        headers[name.lower()] = value
 
     if path == b"/":
         connection.sendall(b"HTTP/1.1 200 OK\r\n\r\n")
     elif path.startswith(b"/echo/"):
         body = path[len(b"/echo/"):]
+        response = (
+            b"HTTP/1.1 200 OK\r\n"
+            b"Content-Type: text/plain\r\n"
+            b"Content-Length: " + str(len(body)).encode() + b"\r\n"
+            b"\r\n" + body
+        )
+        connection.sendall(response)
+    elif path == b"/user-agent":
+        body = headers.get(b"user-agent", b"")
         response = (
             b"HTTP/1.1 200 OK\r\n"
             b"Content-Type: text/plain\r\n"
