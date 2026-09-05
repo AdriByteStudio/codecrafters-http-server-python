@@ -7,7 +7,15 @@ def main():
 
     server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
     connection, _ = server_socket.accept() # wait for client
-    connection.sendall(b"HTTP/1.1 200 OK\r\n\r\n")
+    request = connection.recv(1024)
+    request_line = request.split(b"\r\n")[0]
+    _, path, _ = request_line.split(b" ")
+
+    if path == b"/":
+        connection.sendall(b"HTTP/1.1 200 OK\r\n\r\n")
+    else:
+        connection.sendall(b"HTTP/1.1 404 Not Found\r\n\r\n")
+
     connection.close()
 
 
