@@ -1,12 +1,8 @@
 import socket  # noqa: F401
+import threading
 
 
-def main():
-    # You can use print statements as follows for debugging, they'll be visible when running tests.
-    print("Logs from your program will appear here!")
-
-    server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
-    connection, _ = server_socket.accept() # wait for client
+def handle_connection(connection):
     request = connection.recv(1024)
     lines = request.split(b"\r\n")
     request_line = lines[0]
@@ -43,6 +39,16 @@ def main():
         connection.sendall(b"HTTP/1.1 404 Not Found\r\n\r\n")
 
     connection.close()
+
+
+def main():
+    # You can use print statements as follows for debugging, they'll be visible when running tests.
+    print("Logs from your program will appear here!")
+
+    server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
+    while True:
+        connection, _ = server_socket.accept() # wait for client
+        threading.Thread(target=handle_connection, args=(connection,)).start()
 
 
 if __name__ == "__main__":
