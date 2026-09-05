@@ -13,6 +13,15 @@ def main():
 
     if path == b"/":
         connection.sendall(b"HTTP/1.1 200 OK\r\n\r\n")
+    elif path.startswith(b"/echo/"):
+        body = path[len(b"/echo/"):]
+        response = (
+            b"HTTP/1.1 200 OK\r\n"
+            b"Content-Type: text/plain\r\n"
+            b"Content-Length: " + str(len(body)).encode() + b"\r\n"
+            b"\r\n" + body
+        )
+        connection.sendall(response)
     else:
         connection.sendall(b"HTTP/1.1 404 Not Found\r\n\r\n")
 
